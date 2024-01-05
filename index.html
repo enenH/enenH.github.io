@@ -1,1 +1,196 @@
-<p>Hello 大家好</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Map</title>
+    <style>
+        /* 用于居中整个页面内容的样式 */
+        body {
+            display: flex;
+            justify-content: center; /* 水平居中 */
+            align-items: center; /* 垂直居中 */
+            min-height: 100vh; /* 让内容占据整个视口高度 */
+            margin: 0; /* 去除默认的外边距 */
+            flex-direction: column; /* 垂直方向布局 */
+        }
+    </style>
+</head>
+<body>
+<canvas id="canvas" width="600" height="600"></canvas>
+
+<h2>请输入房间号</h2>
+<form>
+    <label for="name">号码:</label>
+    <input type="text" id="name" name="name">
+    <button type="button" onclick="handleSubmit()">提交</button>
+    <br><br>
+</form>
+
+<script src="./CanvasUtils.js"></script>
+
+<script>
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const c = new CanvasUtils(canvas);
+    const images = {};
+
+    let roomNumber = 0;
+    let t2 = null;
+
+    let image = new Image();
+    image.src = './images/map.jpg';
+    image.onload = function () {
+        c.drawImage(image, 0, 0, canvas.width, canvas.height);
+    }
+
+    const socket = new WebSocket('ws://enen.lol:1234');
+
+    socket.onopen = function () {
+        console.log("onopen");
+    }
+
+    socket.onmessage = function (e) {
+        try {
+            let data = JSON.parse(e.data);
+            if (data.code === 0) {
+                if (!t2) {
+                    //alert("您输入的房间号是：" + roomNumber);
+                    t2 = setInterval(() => {
+                        socket.send(JSON.stringify({
+                            code: 2,
+                            id: roomNumber,
+                        }));
+                    }, 1000 / 60);
+                }
+                onDraw(data.message);
+            } else {
+                if (t2) {
+                    clearInterval(t2);
+                    t2 = null;
+                }
+                alert("房间不存在");
+            }
+        } catch (e) {
+            if (t2) {
+                clearInterval(t2);
+                t2 = null;
+            }
+            alert("数据解析错误:" + e);
+        }
+    }
+
+    socket.onclose = function () {
+        console.log("onclose");
+    }
+
+    function getImage(id) {
+        if (images[id]) {
+            return images[id];
+        } else {
+            let image = new Image();
+            image.src = 'https://game.gtimg.cn/images/yxzj/img201606/heroimg/%d/%d.jpg'.replace(/%d/g, id);
+            images[id] = image;
+            return image;
+        }
+    }
+
+    function handleSubmit() {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            alert("连接已断开，请刷新页面");
+            return;
+        }
+        if (t2) {
+            clearInterval(t2);
+            t2 = null;
+        }
+        const name = document.getElementById("name").value;
+        //检查是否为数字
+        if (!/^[0-9]*$/.test(name)) {
+            alert("请输入正确的房间号");
+            return;
+        }
+        roomNumber = parseInt(name);
+
+        socket.send(JSON.stringify({
+            code: 2,
+            id: roomNumber
+        }));
+    }
+
+    function clamp(value, min, max) {
+        return value < min ? min : (value > max ? max : value);
+    }
+
+    function onDraw(data) {
+        const half = canvas.width / 2;
+        const zoom = half / 50;
+
+        c.clear();
+        c.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+        let arr = data.split(';');
+        for (let item of arr) {
+            let point = item.split(',');
+
+            if (point[0] === 'A') {
+                let x = parseFloat(point[1]) * zoom + half;
+                let y = parseFloat(point[2]) * zoom * -1 + half;
+                let time = parseInt(point[3]);
+
+                if (time > 0) {
+                    c.drawText(point[3], x, y, 'white');
+                } else {
+                    c.drawCircle(x, y, 5, 'white', 2);
+                }
+            } else if (point[0] === 'B') {
+                const radius = 22.5;
+                let x = parseFloat(point[1]) * zoom + half;
+                let y = parseFloat(point[2]) * zoom * -1 + half;
+                let id = parseInt(point[3]);
+                let hp = parseInt(point[4]);
+                let hpMax = parseInt(point[5]);
+                let isBack = parseInt(point[6]) === 1;
+                let isMate = parseInt(point[7]) === 1;
+                let isMe = parseInt(point[8]) === 1;
+
+                if (id < 100 || id >= 600)
+                    continue;
+
+                x = clamp(x, radius, canvas.width - radius);
+                y = clamp(y, radius, canvas.height - radius);
+
+                let image = getImage(id);
+
+                if (image.complete && image.naturalWidth > 10 && image.naturalHeight > 10) {
+                    c.drawImageCircle(image, x, y, radius);
+                    c.drawCircle(x, y, radius, isMe ? "rgba(87, 204, 51, 255)" : isMate ? "rgba(20, 111, 200, 255)" : 'red', 3);
+                } else {
+                    c.drawCircleFilled(x, y, radius, 'red');
+                }
+
+                c.drawRectRoundedFilled(x - radius, y + 20,
+                    x - radius + ((radius * 2) * hp / hpMax), y + 25, 3, "rgba(124, 252, 0, 255)");
+
+                c.drawRectRounded(x - radius, y + 20, x + radius, y + 25, 3, 'yellow', 1);
+
+                if (isBack) {
+                    c.drawArcAnimated(x, y, radius, 'white', 3, 5);
+                }
+
+            } else if (point[0] === 'C') {
+                let x = parseFloat(point[1]) * zoom + half;
+                let y = parseFloat(point[2]) * zoom * -1 + half;
+                let isMate = parseInt(point[3]) === 1;
+
+                //c.drawRectFilled(x - 3, y - 3, x + 3, y + 3,isMate ? "rgba(20, 111, 200, 255)" : 'red');
+                c.drawCircleFilled(x, y, 6, isMate ? "rgba(20, 111, 200, 255)" : 'red');
+            }
+        }
+    }
+
+</script>
+
+
+</body>
+</html>
