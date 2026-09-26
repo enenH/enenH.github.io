@@ -1,196 +1,114 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <title>Map</title>
-    <style>
-        /* 用于居中整个页面内容的样式 */
-        body {
-            display: flex;
-            justify-content: center; /* 水平居中 */
-            align-items: center; /* 垂直居中 */
-            min-height: 100vh; /* 让内容占据整个视口高度 */
-            margin: 0; /* 去除默认的外边距 */
-            flex-direction: column; /* 垂直方向布局 */
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101518">
+  <meta name="description" content="DFM 实时地图，平面地图、2D 模型与 3D 模型自由切换，按需加载当前地图。">
+  <title>DFM · 实时雷达</title>
+  <link rel="stylesheet" href="https://game.gtimg.cn/images/dfm/cp/a20240729directory/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="./styles.css">
+  <script defer src="https://game.gtimg.cn/images/dfm/cp/a20240729directory/js/lib/leaflet.js"></script>
+  <script type="module" src="./assets/app.js"></script>
 </head>
 <body>
-<canvas id="canvas" width="600" height="600"></canvas>
-
-<h2>请输入房间号</h2>
-<form>
-    <label for="name">号码:</label>
-    <input type="text" id="name" name="name">
-    <button type="button" onclick="handleSubmit()">提交</button>
-    <br><br>
-</form>
-
-<script src="./CanvasUtils.js"></script>
-
-<script>
-
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const c = new CanvasUtils(canvas);
-    const images = {};
-
-    let roomNumber = 0;
-    let t2 = null;
-
-    let image = new Image();
-    image.src = './images/map.jpg';
-    image.onload = function () {
-        c.drawImage(image, 0, 0, canvas.width, canvas.height);
-    }
-
-    const socket = new WebSocket('ws://15.188.49.133:1234');
-
-    socket.onopen = function () {
-        console.log("onopen");
-    }
-
-    socket.onmessage = function (e) {
-        try {
-            let data = JSON.parse(e.data);
-            if (data.code === 0) {
-                if (!t2) {
-                    //alert("您输入的房间号是：" + roomNumber);
-                    t2 = setInterval(() => {
-                        socket.send(JSON.stringify({
-                            code: 2,
-                            id: roomNumber,
-                        }));
-                    }, 1000 / 60);
-                }
-                onDraw(data.message);
-            } else {
-                if (t2) {
-                    clearInterval(t2);
-                    t2 = null;
-                }
-                alert("房间不存在");
-            }
-        } catch (e) {
-            if (t2) {
-                clearInterval(t2);
-                t2 = null;
-            }
-            alert("数据解析错误:" + e);
-        }
-    }
-
-    socket.onclose = function () {
-        console.log("onclose");
-    }
-
-    function getImage(id) {
-        if (images[id]) {
-            return images[id];
-        } else {
-            let image = new Image();
-            image.src = 'https://game.gtimg.cn/images/yxzj/img201606/heroimg/%d/%d.jpg'.replace(/%d/g, id);
-            images[id] = image;
-            return image;
-        }
-    }
-
-    function handleSubmit() {
-        if (!socket || socket.readyState !== WebSocket.OPEN) {
-            alert("连接已断开，请刷新页面");
-            return;
-        }
-        if (t2) {
-            clearInterval(t2);
-            t2 = null;
-        }
-        const name = document.getElementById("name").value;
-        //检查是否为数字
-        if (!/^[0-9]*$/.test(name)) {
-            alert("请输入正确的房间号");
-            return;
-        }
-        roomNumber = parseInt(name);
-
-        socket.send(JSON.stringify({
-            code: 2,
-            id: roomNumber
-        }));
-    }
-
-    function clamp(value, min, max) {
-        return value < min ? min : (value > max ? max : value);
-    }
-
-    function onDraw(data) {
-        const half = canvas.width / 2;
-        const zoom = half / 50;
-
-        c.clear();
-        c.drawImage(image, 0, 0, canvas.width, canvas.height);
-
-        let arr = data.split(';');
-        for (let item of arr) {
-            let point = item.split(',');
-
-            if (point[0] === 'A') {
-                let x = parseFloat(point[1]) * zoom + half;
-                let y = parseFloat(point[2]) * zoom * -1 + half;
-                let time = parseInt(point[3]);
-
-                if (time > 0) {
-                    c.drawText(point[3], x, y, 'white');
-                } else {
-                    c.drawCircle(x, y, 5, 'white', 2);
-                }
-            } else if (point[0] === 'B') {
-                const radius = 22.5;
-                let x = parseFloat(point[1]) * zoom + half;
-                let y = parseFloat(point[2]) * zoom * -1 + half;
-                let id = parseInt(point[3]);
-                let hp = parseInt(point[4]);
-                let hpMax = parseInt(point[5]);
-                let isBack = parseInt(point[6]) === 1;
-                let isMate = parseInt(point[7]) === 1;
-                let isMe = parseInt(point[8]) === 1;
-
-                if (id < 100 || id >= 600)
-                    continue;
-
-                x = clamp(x, radius, canvas.width - radius);
-                y = clamp(y, radius, canvas.height - radius);
-
-                let image = getImage(id);
-
-                if (image.complete && image.naturalWidth > 10 && image.naturalHeight > 10) {
-                    c.drawImageCircle(image, x, y, radius);
-                    c.drawCircle(x, y, radius, isMe ? "rgba(87, 204, 51, 255)" : isMate ? "rgba(20, 111, 200, 255)" : 'red', 3);
-                } else {
-                    c.drawCircleFilled(x, y, radius, 'red');
-                }
-
-                c.drawRectRoundedFilled(x - radius, y + 20,
-                    x - radius + ((radius * 2) * hp / hpMax), y + 25, 3, "rgba(124, 252, 0, 255)");
-
-                c.drawRectRounded(x - radius, y + 20, x + radius, y + 25, 3, 'yellow', 1);
-
-                if (isBack) {
-                    c.drawArcAnimated(x, y, radius, 'white', 3, 5);
-                }
-
-            } else if (point[0] === 'C') {
-                let x = parseFloat(point[1]) * zoom + half;
-                let y = parseFloat(point[2]) * zoom * -1 + half;
-                let isMate = parseInt(point[3]) === 1;
-
-                //c.drawRectFilled(x - 3, y - 3, x + 3, y + 3,isMate ? "rgba(20, 111, 200, 255)" : 'red');
-                c.drawCircleFilled(x, y, 6, isMate ? "rgba(20, 111, 200, 255)" : 'red');
-            }
-        }
-    }
-
-</script>
-
-
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 12 19 5M12 3v2M3 12h2M12 19v2M19 12h2"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-exit" viewBox="0 0 24 24"><path d="M9 4H5v16h4m5-12 4 4-4 4M9 12h11"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="1"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2m1-15a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 4v2"/></symbol>
+  </svg>
+  <section id="entry-screen" class="entry-screen" aria-labelledby="entry-title">
+    <header class="entry-header">
+      <a class="brand" href="./" aria-label="DFM 雷达首页"><svg class="brand-icon"><use href="#i-radar"/></svg><span>DFM<span class="brand-divider">/</span><span class="brand-subtitle">RADAR</span></span></a>
+      <span class="entry-meta">实时态势 · 同步视野</span>
+    </header>
+    <main class="entry-main">
+      <div class="join-card">
+        <div class="entry-emblem" aria-hidden="true"><svg><use href="#i-radar"/></svg></div>
+        <p class="eyebrow">ROOM ACCESS</p>
+        <h1 id="entry-title">加入雷达房间</h1>
+        <p class="entry-description">输入客户端的房间号，即刻同步实时地图。</p>
+        <form id="room-form" novalidate>
+          <label class="room-label" for="room-code">4 位房间号</label>
+          <div id="code-field" class="code-field">
+            <div class="code-slots" aria-hidden="true"><span class="code-slot"></span><span class="code-slot"></span><span class="code-slot"></span><span class="code-slot"></span></div>
+            <input id="room-code" class="code-input" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" enterkeyhint="go" spellcheck="false" aria-describedby="room-hint form-message" aria-required="true">
+          </div>
+          <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+          <button id="join-button" class="join-button" type="submit"><span id="join-label">进入雷达</span><svg class="icon join-arrow" aria-hidden="true"><use href="#i-arrow"/></svg><span class="spinner" aria-hidden="true"></span></button>
+          <p id="room-hint" class="room-hint">请先在客户端开启共享，获取房间号</p>
+        </form>
+        <div class="entry-note"><span class="note-line"></span><span>平面地图 / 2D 模型 / 3D 模型</span><span class="note-line"></span></div>
+      </div>
+    </main>
+    <footer class="entry-footer"><span>DFM PLUS</span><span>PC / ANDROID</span></footer>
+  </section>
+  <section id="radar-screen" class="radar-screen" hidden aria-label="实时雷达工作台">
+    <header class="radar-header">
+      <div class="brand radar-brand"><svg class="brand-icon" aria-hidden="true"><use href="#i-radar"/></svg><span>DFM<span class="brand-divider">/</span><span class="brand-subtitle">RADAR</span></span></div>
+      <div class="map-heading"><span class="eyebrow">当前地图</span><h1 id="map-name" tabindex="-1">等待识别地图</h1><span class="auto-badge">自动同步</span></div>
+      <div class="room-actions"><div class="room-badge"><span>房间</span><strong id="active-room">----</strong></div><button id="leave-button" class="leave-button" type="button" title="退出房间"><svg class="icon" aria-hidden="true"><use href="#i-exit"/></svg><span>退出</span></button></div>
+    </header>
+    <div class="view-bar">
+      <div class="view-switch" role="group" aria-label="地图显示方式">
+        <button type="button" data-mode="flat" aria-pressed="true">平面地图</button>
+        <button type="button" data-mode="model2d" aria-pressed="false">2D 模型</button>
+        <button type="button" data-mode="model3d" aria-pressed="false">3D 模型</button>
+      </div>
+      <div id="model-options" class="model-options" hidden>
+        <div id="ally-view-control" class="ally-view-control" hidden>
+          <label for="ally-view">3D 视角</label>
+          <select id="ally-view" aria-describedby="ally-view-status"><option value="">自由观察</option></select>
+          <span id="ally-view-status" class="visually-hidden" role="status">选择友方，切换跟随视角</span>
+        </div>
+        <label>范围 <select id="model-radius"><option value="150">150 米</option><option value="300">300 米</option><option value="all">全图（高负载）</option></select></label>
+        <label><input id="model-xray" type="checkbox" checked>墙后标记</label>
+        <span id="model-gesture">拖动旋转 · 右键 / 双指平移 · 双击表面定位</span>
+      </div>
+    </div>
+    <main class="radar-workspace">
+      <div id="radar-map" class="radar-map" role="region" aria-label="雷达地图，可拖动平移、滚轮或双指缩放"></div>
+      <div id="model-map" class="model-map" role="region" aria-label="当前地图模型" hidden></div>
+      <div id="model-loading" class="model-loading surface" role="status" aria-live="polite" hidden>
+        <strong id="model-loading-text">准备当前地图模型…</strong>
+        <progress id="model-progress" max="1" value="0" aria-label="当前地图下载进度"></progress>
+        <p>仅下载当前地图；切回平面地图可取消加载。</p>
+        <button id="model-retry" class="secondary-button" type="button" hidden>重试当前地图</button>
+      </div>
+      <div class="connection-hud surface" role="status" aria-live="polite"><span id="connection-dot" class="status-dot" data-tone="waiting"></span><span id="connection-label">正在连接</span></div>
+      <div id="map-notice" class="map-notice" role="status" hidden></div>
+      <div id="coordinate-notice" class="coordinate-notice" role="status" hidden>部分位置缺少高度或世界原点，未显示在模型中。模型可浏览；平面地图仍可查看全部位置。</div>
+      <div id="map-empty" class="map-empty">
+        <div class="empty-symbol" aria-hidden="true"><svg><use href="#i-radar"/></svg></div>
+        <h2 id="empty-title">等待客户端数据</h2>
+        <p id="empty-description">进入对局后，地图和位置会自动出现在这里。</p>
+        <button id="reload-button" class="secondary-button" type="button" hidden>重新加载页面</button>
+      </div>
+      <div class="map-tools surface" role="group" aria-label="地图控制">
+        <button id="locate-button" class="tool-button" type="button" aria-label="定位友方" title="定位所选友方，未选择时定位首位友方" disabled><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></button>
+        <span class="tool-divider"></span>
+        <button id="zoom-in-button" class="tool-button" type="button" aria-label="放大地图" title="放大地图" disabled><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg></button>
+        <button id="zoom-out-button" class="tool-button" type="button" aria-label="缩小地图" title="缩小地图" disabled><svg class="icon" aria-hidden="true"><use href="#i-minus"/></svg></button>
+        <span class="tool-divider"></span>
+        <button id="fit-button" class="tool-button" type="button" aria-label="查看全图" title="查看全图" disabled><svg class="icon" aria-hidden="true"><use href="#i-fit"/></svg></button>
+      </div>
+      <div class="radar-bottom">
+        <div id="model-stats" class="model-stats"></div>
+        <div class="legend surface" aria-label="标记图例与数量">
+          <div class="legend-item"><span class="marker-key key-ally"></span><span>友方</span><strong id="ally-count">—</strong></div>
+          <div class="legend-item"><span class="marker-key key-player"></span><span>敌方</span><strong id="player-count">—</strong></div>
+          <div class="legend-item"><span class="marker-key key-bot"></span><span>人机</span><strong id="bot-count">—</strong></div>
+          <div class="legend-item"><span class="marker-key key-item"></span><span>物资</span><strong id="item-count">—</strong></div>
+        </div>
+        <div class="session-meta surface"><span class="online-count"><svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span><strong id="peer-count">0</strong> 在线</span></span><span class="meta-divider"></span><span id="data-age">尚无数据</span></div>
+      </div>
+    </main>
+  </section>
+  <noscript><div class="noscript-notice">请启用 JavaScript 后使用实时雷达。</div></noscript>
 </body>
 </html>

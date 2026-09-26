@@ -1,0 +1,10 @@
+# Preserve verified build bytes so GitHub serves the manifest's exact checksums.
+index.html -text
+styles.css -text
+nodes.json -text
+# Generated vendor bundles contain intentional whitespace inside shader strings.
+assets/** -text -whitespace
+*.md text eol=lf
+*.mjs text eol=lf
+build-manifest.json text eol=lf
+CNAME text eol=lf

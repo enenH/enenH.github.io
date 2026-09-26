@@ -1,0 +1,7 @@
+[
+  {"id": 1, "name": "雷达节点 1", "host": "cheap-host1.cheapyun.com", "port": 12831},
+  {"id": 2, "name": "雷达节点 2", "host": "cheap-host1.cheapyun.com", "port": 17681},
+  {"id": 3, "name": "雷达节点 3", "host": "cheap-host1.cheapyun.com", "port": 48303},
+  {"id": 4, "name": "雷达节点 4", "host": "cheap-host1.cheapyun.com", "port": 13699},
+  {"id": 5, "name": "雷达节点 5", "host": "cheap-host1.cheapyun.com", "port": 41092}
+]
