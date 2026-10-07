@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#101518">
-  <meta name="description" content="DFM 实时地图，平面地图、2D 模型与 3D 模型自由切换，按需加载当前地图。">
+  <meta name="description" content="DFM 实时地图，平面地图与 3D 模型自由切换，按需加载当前地图。">
   <title>DFM · 实时雷达</title>
   <link rel="stylesheet" href="https://game.gtimg.cn/images/dfm/cp/a20240729directory/leaflet.css" crossorigin="">
   <link rel="stylesheet" href="./styles.css">
@@ -43,7 +43,7 @@
           <button id="join-button" class="join-button" type="submit"><span id="join-label">进入雷达</span><svg class="icon join-arrow" aria-hidden="true"><use href="#i-arrow"/></svg><span class="spinner" aria-hidden="true"></span></button>
           <p id="room-hint" class="room-hint">请先在客户端开启共享，获取房间号</p>
         </form>
-        <div class="entry-note"><span class="note-line"></span><span>平面地图 / 2D 模型 / 3D 模型</span><span class="note-line"></span></div>
+        <div class="entry-note"><span class="note-line"></span><span>平面地图 / 3D 模型</span><span class="note-line"></span></div>
       </div>
     </main>
     <footer class="entry-footer"><span>DFM PLUS</span><span>PC / ANDROID</span></footer>
@@ -57,7 +57,6 @@
     <div class="view-bar">
       <div class="view-switch" role="group" aria-label="地图显示方式">
         <button type="button" data-mode="flat" aria-pressed="true">平面地图</button>
-        <button type="button" data-mode="model2d" aria-pressed="false">2D 模型</button>
         <button type="button" data-mode="model3d" aria-pressed="false">3D 模型</button>
       </div>
       <div class="marker-options" role="group" aria-label="标记显示选项">

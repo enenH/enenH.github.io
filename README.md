@@ -6,7 +6,7 @@
 
 - HTML、CSS、JavaScript、Worker 和公开节点清单由 GitHub Pages 托管。
 - 房间号首位数字选择 `nodes.json` 中的节点，浏览器直连其 WebSocket。
-- 2D/3D 模型目录请求发往同一个节点的 `/models/{name}`，不请求 GitHub Pages 的 `/models/`。
+- 3D 模型目录请求发往同一个节点的 `/models/{name}`，不请求 GitHub Pages 的 `/models/`。
 - 节点允许 `http://enenh.com` 跨域读取模型元数据；实际地图数据由浏览器从云存储直接分段下载，临时签名链接不会写进仓库。
 
 本仓库不运行 Node/Python 后端，也不包含服务器密码、私有部署记录或完整模型包。
