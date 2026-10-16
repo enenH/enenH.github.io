@@ -47,7 +47,7 @@ const html = files.get('index.html').toString('utf8');
 for (const match of html.matchAll(/(?:src|href)="\.\/([^"?#]+)"/g))
   if (!files.has(match[1])) throw new Error('Missing HTML asset: ' + match[1]);
 const nodes = JSON.parse(files.get('nodes.json').toString('utf8'));
-if (!Array.isArray(nodes) || nodes.length !== 5) throw new Error('Unexpected public node inventory.');
+if (!Array.isArray(nodes) || nodes.length !== 2) throw new Error('Unexpected public node inventory.');
 
 let previous = null;
 try { previous = JSON.parse(await readFile(resolve(target, 'build-manifest.json'), 'utf8')); }
