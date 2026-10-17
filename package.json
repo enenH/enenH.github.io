@@ -1,0 +1,12 @@
+{
+  "name": "dfm-radar",
+  "private": true,
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node tools/verify-build.mjs",
+    "start": "npm run build && node tools/preview.mjs"
+  },
+  "dependencies": { "fflate": "0.8.2", "three": "0.186.0" },
+  "devDependencies": { "esbuild": "0.28.2" }
+}
